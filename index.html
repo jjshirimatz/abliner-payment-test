@@ -1,0 +1,92 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DADYPLUS | Malipo</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#eef3fa;font-family:system-ui,Arial;color:#182942;min-height:100vh;display:grid;place-items:center;padding:20px}
+.card{width:100%;max-width:420px;background:white;border-radius:24px;overflow:hidden;box-shadow:0 12px 40px #19365b18}
+.hero{background:#1255b7;color:white;text-align:center;padding:30px 20px}
+.hero h2{margin:8px 0}
+.hero p{opacity:.85;font-size:14px}
+.content{padding:24px}
+.price{text-align:center;font-size:32px;font-weight:800;color:#1255b7;margin:10px 0 24px}
+label{display:block;font-size:14px;font-weight:600;margin-bottom:9px}
+input{width:100%;padding:16px;border:1px solid #d4deeb;border-radius:12px;font-size:17px;outline:none}
+input:focus{border-color:#1255b7}
+button{width:100%;padding:17px;border:0;border-radius:12px;background:#1255b7;color:white;font-size:16px;font-weight:700;margin-top:20px;cursor:pointer}
+button:disabled{opacity:.6}
+#status{font-size:14px;line-height:1.6;text-align:center;margin-top:20px;white-space:pre-line}
+.note{font-size:12px;text-align:center;color:#77869a;margin-top:20px}
+</style>
+</head>
+<body>
+<div class="card">
+ <div class="hero">
+  <div style="font-size:38px">🎬</div>
+  <h2>DADYPLUS MOVIES</h2>
+  <p>Malipo salama kwa Mobile Money</p>
+ </div>
+ <div class="content">
+  <div class="price">TSh 500</div>
+  <label>Namba ya simu ya malipo</label>
+  <input id="phone" type="tel" inputmode="tel"
+         placeholder="07XXXXXXXX" maxlength="13">
+  <button id="pay" onclick="pay()">LIPA TSH 500</button>
+  <div id="status" role="status" aria-live="polite"></div>
+  <div class="note">Thibitisha malipo kwenye simu yako</div>
+ </div>
+</div>
+<script>
+const API = "https://YOUR-WORKER.workers.dev";
+const button = document.getElementById("pay");
+const statusBox = document.getElementById("status");
+const phoneInput = document.getElementById("phone");
+
+function show(message){statusBox.textContent=message;}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+async function pay(){
+ let phone=phoneInput.value.replace(/[\s+-]/g,"");
+ if(/^0[67]\d{8}$/.test(phone))phone="255"+phone.slice(1);
+ if(!/^255[67]\d{8}$/.test(phone)){
+  show("Weka namba sahihi ya Tanzania.");
+  return;
+ }
+ button.disabled=true;
+ show("Tunaandaa ombi la malipo...");
+ try{
+  const res=await fetch(API+"/pay",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({phone})
+  });
+  const data=await res.json();
+  if(!res.ok)throw Error(data.message||"Ombi limeshindwa.");
+  show("Ombi limetumwa. Thibitisha kwenye simu yako.");
+  for(let i=0;i<40;i++){
+   await sleep(5000);
+   const r=await fetch(API+"/status?id="+encodeURIComponent(data.id));
+   const result=await r.json();
+   if(!r.ok)continue;
+   if(result.status==="completed"){
+    show("✅ MALIPO YAMEFANIKIWA!");
+    return;
+   }
+   if(result.status==="failed"){
+    show("❌ Malipo hayakufanikiwa.");
+    return;
+   }
+  }
+  show("Malipo bado hayajathibitishwa. Angalia historia ya miamala kabla ya kujaribu tena.");
+ }catch(e){
+  show("Hitilafu: "+e.message);
+ }finally{
+  button.disabled=false;
+ }
+}
+</script>
+</body>
+</html>
